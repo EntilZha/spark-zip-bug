@@ -26,7 +26,7 @@ object App {
       val sc = new SparkContext(masters(i), "GraphX Bug")
       val lines = sc.textFile("src/main/resources/data.txt") //THIS FAILS AT local[3]
       //val lines = sc.parallelize(arrayLines) ERASE ABOVE WITH THIS AND IT WORKS
-      val docIds = sc.parallelize(0L until lines.count())
+      val docIds = sc.parallelize(0L until lines.count(), lines.partitions.size)
       docIds.partitions // THIS IS FINE
       lines.partitions // THIS IS FINE
       val docsWithIds = lines.zip(docIds)
