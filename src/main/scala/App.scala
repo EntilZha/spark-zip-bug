@@ -25,22 +25,28 @@ object App {
       println(s"Testing: ${masters(i)}")
       val sc = new SparkContext(masters(i), "GraphX Bug")
       val lines = sc.textFile("src/main/resources/data.txt") //THIS FAILS AT local[3]
-      //val lines = sc.parallelize(arrayLines) THIS WORKS
+      //val lines = sc.parallelize(arrayLines) ERASE ABOVE WITH THIS AND IT WORKS
       val docIds = sc.parallelize(0L until lines.count())
+      docIds.partitions // THIS IS FINE
+      lines.partitions // THIS IS FINE
       val docsWithIds = lines.zip(docIds)
-      val tokens = docsWithIds.flatMap({ case (doc, id) =>
-        doc.split(" ").map(w => (id, -math.abs(1 + w.hashCode).toLong, 0))
-      })
-      val f1: Edge[Int] => VertexId = _.srcId
-      val f2: Edge[Int] => VertexId = _.dstId
-      val edges = tokens.mapPartitionsWithIndex({ case (pid, iter) =>
-        iter.map({case (did, eid, t) =>
-          Edge(did, eid, t)
-        })
-      })
-      edges.groupBy(f1).count() //FAILURE HAPPENS HERE
-      edges.groupBy(f2).count()
-      edges.groupBy(_.attr).count()
+      docsWithIds.partitions // FAILURE OCCURS HERE
+
+      // Old code trying to force a failure, leaving here for now
+      //val tokens = docsWithIds.flatMap({ case (doc, id) =>
+      //  doc.split(" ").map(w => (id, -math.abs(1 + w.hashCode).toLong, 0))
+      //})
+      //val f1: Edge[Int] => VertexId = _.srcId
+      //val f2: Edge[Int] => VertexId = _.dstId
+      //val edges = tokens.mapPartitionsWithIndex({ case (pid, iter) =>
+      //  iter.map({case (did, eid, t) =>
+      //    Edge(did, eid, t)
+      //  })
+      //})
+      //edges.partitions.length //FAILURE HAPPENS HERE
+      //edges.groupBy(f1).count() //AND ALSO HERE FAILURE HAPPENS HERE
+      //edges.groupBy(f2).count()
+      //edges.groupBy(_.attr).count()
       //val graph = Graph.fromEdgeTuples(edges, new Array[Long](100)).partitionBy(PartitionStrategy.EdgePartition1D)
       //graph.vertices.count()
       //graph.edges.groupBy(e => e.dstId).count()
